@@ -218,12 +218,19 @@
         <div style="font-size: 2.8rem; font-weight: 800; color: var(--primary);" id="final-score">0</div>
       </div>
 
-      <button class="btn-action" onclick="restartGame()">🔄 再玩一次</button>
+      <!-- 登記成績輸入區 -->
+      <div id="submit-section" style="margin-bottom: 20px;">
+        <input type="text" id="player-name" placeholder="請輸入你的名字或座號" style="width: 100%; padding: 14px; border-radius: 12px; border: 2px solid #CBD5E1; font-size: 1rem; font-weight: 700; margin-bottom: 12px; text-align: center; box-sizing: border-box;">
+        <button class="btn-action" id="submit-btn" onclick="submitScore()">📤 登記成績到成績單</button>
+      </div>
+
+      <div id="submit-status" style="font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; display: none;"></div>
+
+      <button class="btn-action" style="background: #94A3B8;" onclick="restartGame()">🔄 再玩一次</button>
     </div>
   </div>
 
   <script>
-    // 依據教案 5 大規則與句型設計的題庫
     const quizData = [
       {
         rule: "規則 1：一般形容詞直接＋est",
@@ -279,6 +286,11 @@
     let score = 0;
     let answered = false;
 
+    // === Google 表單自動回傳設定 ===
+    const FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSf2vqdhfafv8C_C-AxzPYhjh1l7oRjIdDIeFuXvPKi7TuTb2A/formResponse";
+    const ENTRY_NAME = "entry.1895102090";
+    const ENTRY_SCORE = "entry.191608318";
+
     function loadQuestion() {
       answered = false;
       const q = quizData[currentIdx];
@@ -316,7 +328,7 @@
 
       if (selectedIdx === q.answer) {
         buttons[selectedIdx].classList.add("correct");
-        score += 20; // 滿分約 120 或每題算分
+        score += 20;
         document.getElementById("current-score").innerText = score;
         feedback.innerHTML = `<span style="color: var(--success);">🎉 答對了！ ${q.tip}</span>`;
       } else {
@@ -343,9 +355,53 @@
       document.getElementById("final-score").innerText = score + " 分";
     }
 
+    function submitScore() {
+      const nameInput = document.getElementById("player-name");
+      const playerName = nameInput.value.trim();
+      const statusDiv = document.getElementById("submit-status");
+      const submitBtn = document.getElementById("submit-btn");
+
+      if (!playerName) {
+        alert("請先輸入名字再送出喔！");
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerText = "登記中...";
+
+      const formData = new FormData();
+      formData.append(ENTRY_NAME, playerName);
+      formData.append(ENTRY_SCORE, score);
+
+      fetch(FORM_URL, {
+        method: "POST",
+        mode: "no-cors",
+        body: formData
+      })
+      .then(() => {
+        statusDiv.style.display = "block";
+        statusDiv.style.color = "var(--success)";
+        statusDiv.innerText = "✅ 成績已成功送出！老師已收到囉。";
+        document.getElementById("submit-section").style.display = "none";
+      })
+      .catch((err) => {
+        statusDiv.style.display = "block";
+        statusDiv.style.color = "var(--error)";
+        statusDiv.innerText = "❌ 送出失敗，請檢查網路連線。";
+        submitBtn.disabled = false;
+        submitBtn.innerText = "重試一次";
+      });
+    }
+
     function restartGame() {
       currentIdx = 0;
       score = 0;
+      document.getElementById("submit-section").style.display = "block";
+      document.getElementById("submit-status").style.display = "none";
+      document.getElementById("player-name").value = "";
+      document.getElementById("submit-btn").disabled = false;
+      document.getElementById("submit-btn").innerText = "📤 登記成績到成績單";
+      
       document.getElementById("end-screen").style.display = "none";
       document.getElementById("quiz-screen").style.display = "block";
       loadQuestion();
